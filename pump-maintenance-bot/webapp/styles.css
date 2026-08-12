@@ -125,10 +125,6 @@ input, textarea { font: inherit; color: var(--text); }
 }
 .cat-head h2 { font-size: 16px; font-weight: 700; margin: 0; flex: 1; }
 .cat-count { font-size: 13px; color: var(--hint); font-variant-numeric: tabular-nums; }
-.allok-btn {
-  background: var(--ok-bg); color: var(--ok);
-  border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 13px;
-}
 .cat-done-tick { color: var(--ok); font-weight: 700; font-size: 14px; }
 
 .task {
@@ -197,22 +193,42 @@ input, textarea { font: inherit; color: var(--text); }
   border-radius: 12px; padding: 10px 12px; outline: none;
 }
 .sheet textarea:focus { border-color: var(--accent); }
+.fields { margin-top: 10px; }
+.field-label {
+  display: block; font-size: 13px; font-weight: 600;
+  margin: 10px 0 4px;
+}
+.field-label .unit { color: var(--hint); font-weight: 400; }
 .value-field {
   width: 100%;
   background: var(--bg2); border: 1px solid var(--line);
   border-radius: 12px; padding: 11px 12px; outline: none;
-  margin-top: 10px; font-size: 16px;
+  font-size: 16px;
 }
 .value-field:focus { border-color: var(--accent); }
 .big-btn.ok { background: var(--ok); color: #fff; }
-.photo-row { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
-.photo-btn {
-  background: var(--bg2); color: var(--accent);
-  border: 1px dashed var(--accent);
-  border-radius: 12px; padding: 11px 14px; font-weight: 600; font-size: 14px;
+
+.photo-req-note {
+  font-size: 12.5px; color: var(--hint); margin: 14px 0 6px;
 }
-.photo-state { font-size: 13px; color: var(--hint); }
-.photo-state.ok { color: var(--ok); font-weight: 600; }
+.photo-slots { display: flex; gap: 8px; margin-bottom: 12px; }
+.photo-slot {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: var(--bg2);
+  border: 1px dashed var(--hint);
+  border-radius: 12px;
+  padding: 10px 4px;
+  color: var(--text);
+}
+.photo-slot .slot-icon { font-size: 20px; }
+.photo-slot .slot-label { font-size: 13px; font-weight: 600; }
+.photo-slot .slot-req { font-size: 11px; color: var(--hint); }
+.photo-slot.done {
+  border: 1px solid var(--ok);
+  background: var(--ok-bg);
+}
+.photo-slot.done .slot-req { color: var(--ok); }
 .sheet-actions { display: flex; gap: 8px; margin-top: 6px; }
 .sheet-actions .big-btn { flex: 1; }
 

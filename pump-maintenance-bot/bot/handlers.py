@@ -1,5 +1,6 @@
 """Telegram handlers: worker inspection flow + admin tools."""
 import html
+import json
 import logging
 from datetime import datetime
 
@@ -77,10 +78,27 @@ def issue_alert_texts(conn, insp, items) -> tuple[str, list[tuple[str, str]]]:
         if i["note"]:
             detail += f"\n  📝 {esc(i['note'])}"
         body.append(f"• {esc(cat['name'])}: {esc(task['desc'])}{detail}")
-        if i["photo_file_id"]:
-            photos.append((i["photo_file_id"],
-                           f"📷 {esc(ph['code'])} — {esc(task['desc'])}"))
+        for label, ref in item_photos(i):
+            caption = f"📷 {esc(ph['code'])} — {esc(task['desc'])}"
+            if label:
+                caption += f" ({esc(label)})"
+            photos.append((ref, caption))
     return header + "\n".join(body), photos
+
+
+def item_photos(item) -> list[tuple[str, str]]:
+    """All photos of an inspection item as (label, ref) pairs."""
+    out = []
+    keys = item.keys() if hasattr(item, "keys") else []
+    if "photos" in keys and item["photos"]:
+        try:
+            for p in json.loads(item["photos"]):
+                out.append((p.get("label", ""), p["ref"]))
+        except (ValueError, KeyError, TypeError):
+            pass
+    if item["photo_file_id"]:  # legacy chat-flow single photo
+        out.append(("", item["photo_file_id"]))
+    return out
 
 
 # ------------------------------------------------------------------ /start

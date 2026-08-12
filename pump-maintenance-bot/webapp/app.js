@@ -35,7 +35,8 @@ const state = {
 };
 
 const monthKey = () => new Date().toISOString().slice(0, 7);
-const draftKey = (code) => `bppm:${code}:${monthKey()}`;
+// v2: answers carry values{} and photos[] — old-format drafts are ignored.
+const draftKey = (code) => `bppm2:${code}:${monthKey()}`;
 
 function loadDraft(code) {
   try { return JSON.parse(localStorage.getItem(draftKey(code))) || {}; }
@@ -214,12 +215,17 @@ function renderChecklist() {
       let meta = "";
       if (a) {
         const bits = [];
-        if (a.value) bits.push(`📏 ${esc(a.value)}`);
+        const vals = a.values || {};
+        for (const k of Object.keys(vals)) {
+          if (String(vals[k]).trim()) bits.push(`📏 ${esc(k)}: ${esc(vals[k])}`);
+        }
         if (a.result === "issue" && a.note) bits.push(`📝 ${esc(a.note)}`);
-        if (a.photo) bits.push("📷");
+        if (a.photos && a.photos.length) {
+          bits.push(`📷 ${a.photos.map((p) => esc(p.label)).join(" · ")}`);
+        }
         if (bits.length) {
           const cls = a.result === "issue" ? "task-note" : "task-meta";
-          meta = `<div class="${cls}">${bits.join(" · ")}</div>`;
+          meta = `<div class="${cls}">${bits.join("&ensp;·&ensp;")}</div>`;
         }
       }
       return `
@@ -233,11 +239,9 @@ function renderChecklist() {
           </div>
         </div>`;
     }).join("");
-    const headRight = allDone
-      ? `<span class="cat-done-tick">✓ done</span>`
-      : `<button class="allok-btn" data-action="allok" data-cat="${esc(cat.key)}">✅ All OK</button>`;
+    const headRight = allDone ? `<span class="cat-done-tick">✓ done</span>` : "";
     return `
-      <div class="card">
+      <div class="card" data-cat-card="${esc(cat.key)}">
         <div class="cat-head">
           <h2>${esc(cat.emoji)} ${esc(cat.name)}</h2>
           <span class="cat-count">${catDone}/${cat.tasks.length}</span>
@@ -279,26 +283,47 @@ function openSheet(cat, taskId, kind) {
   const catDef = state.cl.categories.find((c) => c.key === cat);
   const task = catDef.tasks.find((t) => t.id === taskId);
   const existing = state.answers[`${cat}:${taskId}`] || {};
-  let photoRef = existing.photo || null;
   const isIssue = kind === "issue";
+  const photoLabels = state.cl.photo_labels || ["Before", "During", "After"];
+
+  // {label: ref} of already-uploaded photos
+  const photoRefs = {};
+  for (const p of existing.photos || []) photoRefs[p.label] = p.ref;
 
   const noteField = isIssue
-    ? `<textarea id="sheet-note" placeholder="Describe the issue…"
+    ? `<textarea id="sheet-note" placeholder="Describe the issue… (required)"
          maxlength="1000">${esc(existing.note || "")}</textarea>` : "";
+
+  const fieldsHtml = (task.fields || []).map((f, i) => `
+      <label class="field-label" for="fld-${i}">${esc(f.label)}
+        <span class="unit">${esc(f.unit)}</span></label>
+      <input class="value-field" id="fld-${i}" data-field="${esc(f.label)}"
+        type="text" ${f.type === "number" ? 'inputmode="decimal"' : ""}
+        maxlength="60" placeholder="${esc(f.unit)}"
+        value="${esc((existing.values || {})[f.label] || "")}">`).join("");
+
+  const slotsHtml = photoLabels.map((pl) => {
+    const done = !!photoRefs[pl];
+    const required = !isIssue || pl === photoLabels[0];
+    return `
+      <button class="photo-slot ${done ? "done" : ""}" data-slot="${esc(pl)}">
+        <span class="slot-icon">${done ? "✅" : "📷"}</span>
+        <span class="slot-label">${esc(pl)}</span>
+        <span class="slot-req">${done ? "attached" : (required ? "required" : "optional")}</span>
+      </button>`;
+  }).join("");
+
   $sheetRoot.innerHTML = `
     <div class="sheet-backdrop" id="sheet-bd"></div>
     <div class="sheet">
       <h3>${isIssue ? "⚠️" : "✅"} ${esc(task.desc)}</h3>
       ${noteField}
-      <input class="value-field" id="sheet-value" maxlength="200"
-        placeholder="Reading / value — e.g. 5.2 A, 415 V, 2.1 bar"
-        value="${esc(existing.value || "")}">
-      <div class="photo-row">
-        <button class="photo-btn" id="photo-btn">📷 Add photo</button>
-        <span class="photo-state ${photoRef ? "ok" : ""}" id="photo-state">
-          ${photoRef ? "Photo attached ✓" : (isIssue ? "Recommended" : "Optional")}</span>
-        <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
-      </div>
+      ${fieldsHtml ? `<div class="fields">${fieldsHtml}</div>` : ""}
+      <div class="photo-req-note">${isIssue
+        ? "Evidence photo required (Before = defect found)"
+        : "Work-proof photos required: Before, During, After"}</div>
+      <div class="photo-slots">${slotsHtml}</div>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
       <div class="sheet-actions">
         <button class="big-btn secondary" id="sheet-cancel">Cancel</button>
         <button class="big-btn ${isIssue ? "" : "ok"}" id="sheet-save">
@@ -311,35 +336,64 @@ function openSheet(cat, taskId, kind) {
   document.getElementById("sheet-cancel").addEventListener("click", close);
 
   const input = document.getElementById("photo-input");
-  const photoState = document.getElementById("photo-state");
-  document.getElementById("photo-btn").addEventListener("click", () => input.click());
+  let currentSlot = null;
+  for (const btn of $sheetRoot.querySelectorAll(".photo-slot")) {
+    btn.addEventListener("click", () => {
+      currentSlot = btn.dataset.slot;
+      input.click();
+    });
+  }
   input.addEventListener("change", async () => {
-    if (!input.files.length) return;
-    photoState.textContent = "Uploading…";
-    photoState.classList.remove("ok");
+    if (!input.files.length || !currentSlot) return;
+    const btn = $sheetRoot.querySelector(`.photo-slot[data-slot="${currentSlot}"]`);
+    btn.querySelector(".slot-req").textContent = "uploading…";
     try {
       const fd = new FormData();
       fd.append("photo", input.files[0]);
       const r = await api("/api/photo", { method: "POST", body: fd });
-      photoRef = r.photo;
-      photoState.textContent = "Photo attached ✓";
-      photoState.classList.add("ok");
+      photoRefs[currentSlot] = r.photo;
+      btn.classList.add("done");
+      btn.querySelector(".slot-icon").textContent = "✅";
+      btn.querySelector(".slot-req").textContent = "attached";
       tap();
     } catch (e) {
-      photoState.textContent = "Upload failed — try again";
+      btn.querySelector(".slot-req").textContent = "failed — retry";
     }
+    input.value = "";
   });
 
   document.getElementById("sheet-save").addEventListener("click", () => {
-    const value = document.getElementById("sheet-value").value.trim();
     const note = isIssue ? document.getElementById("sheet-note").value.trim() : "";
-    if (isIssue && !note && !photoRef) {
-      alert("Please describe the issue or attach a photo.");
-      return;
+    const values = {};
+    for (const inp of $sheetRoot.querySelectorAll(".value-field")) {
+      values[inp.dataset.field] = inp.value.trim();
     }
+    // Enforcement: OK needs every reading + all photos; Issue needs
+    // description + the "Before" (defect) photo at minimum.
+    if (!isIssue) {
+      for (const f of task.fields || []) {
+        const v = values[f.label];
+        if (!v) { alert(`Please enter: ${f.label} (${f.unit})`); return; }
+        if (f.type === "number" && isNaN(parseFloat(v.replace(",", ".")))) {
+          alert(`${f.label} must be a number (${f.unit})`); return;
+        }
+      }
+      const missing = photoLabels.filter((pl) => !photoRefs[pl]);
+      if (missing.length) {
+        alert(`Photo required: ${missing.join(", ")}`); return;
+      }
+    } else {
+      if (!note) { alert("Please describe the issue."); return; }
+      if (!Object.keys(photoRefs).length) {
+        alert("Please attach at least the 'Before' (defect) photo."); return;
+      }
+    }
+    const photos = photoLabels
+      .filter((pl) => photoRefs[pl])
+      .map((pl) => ({ label: pl, ref: photoRefs[pl] }));
     close();
     haptic(isIssue ? "warning" : "success");
-    setAnswer(cat, taskId, { result: kind, note, value, photo: photoRef });
+    setAnswer(cat, taskId, { result: kind, note, values, photos });
   });
 }
 
@@ -350,8 +404,8 @@ async function submit() {
   const results = taskList().map((t) => {
     const a = state.answers[`${t.cat}:${t.id}`];
     return { category: t.cat, task_id: t.id, result: a.result,
-             note: a.note || null, value: a.value || null,
-             photo: a.photo || null };
+             note: a.note || null, values: a.values || {},
+             photos: a.photos || [] };
   });
   const doSubmit = async () => {
     renderNote("Submitting…");
@@ -399,17 +453,7 @@ $app.addEventListener("click", (ev) => {
   else if (a.action === "menu") { tap(); renderMenu(); }
   else if (a.action === "back") { tap(); loadHome(); }
   else if (a.action === "submit" && !btn.disabled) submit();
-  else if (a.action === "allok") {
-    tap();
-    const cat = state.cl.categories.find((c) => c.key === a.cat);
-    for (const t of cat.tasks) {
-      if (!state.answers[`${a.cat}:${t.id}`]) {
-        state.answers[`${a.cat}:${t.id}`] = { result: "ok" };
-      }
-    }
-    saveDraft();
-    renderChecklist();
-  } else if (a.action === "ans") {
+  else if (a.action === "ans") {
     tap();
     // OK and Issue prompt for reading/photo; N/A needs nothing.
     if (a.res === "skipped") setAnswer(a.cat, parseInt(a.task, 10), { result: "skipped" });

@@ -11,6 +11,17 @@ _data = json.loads((config.DATA_DIR / "checklists.json").read_text(encoding="utf
 CATEGORIES: list[dict] = _data["categories"]
 CATEGORY_BY_KEY = {c["key"]: c for c in CATEGORIES}
 FREQ_LABELS: dict[str, str] = _data["frequencies"]
+PHOTO_LABELS: list[str] = _data.get("photo_labels", ["Before", "During", "After"])
+
+
+def format_values(task: dict, values: dict) -> str:
+    """'Current L1: 5.2 A; Current L2: 5.1 A' from a {label: value} dict."""
+    parts = []
+    for f in task.get("fields", []):
+        v = str(values.get(f["label"], "")).strip()
+        if v:
+            parts.append(f"{f['label']}: {v} {f['unit']}")
+    return "; ".join(parts)
 
 
 def task_of(category_key: str, task_id: int) -> dict:

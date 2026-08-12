@@ -4,6 +4,7 @@ Every API request carries the Mini App's initData in the X-Tg-Init-Data
 header; it is cryptographically verified against the bot token, so the
 worker's identity can't be spoofed.
 """
+import json
 import logging
 import secrets
 from datetime import datetime
@@ -120,7 +121,8 @@ async def api_checklist(request):
             "key": cat["key"], "name": cat["name"], "emoji": cat["emoji"],
             "tasks": [
                 {"id": tid, "freq": freq,
-                 "desc": checklists.task_of(cat["key"], tid)["desc"]}
+                 "desc": (t := checklists.task_of(cat["key"], tid))["desc"],
+                 "fields": t.get("fields", [])}
                 for tid, freq in by_cat[cat["key"]]
             ],
         })
@@ -128,6 +130,7 @@ async def api_checklist(request):
         "code": house["code"], "name": house["name"],
         "categories": categories,
         "freq_labels": checklists.FREQ_LABELS,
+        "photo_labels": checklists.PHOTO_LABELS,
     })
 
 
@@ -158,6 +161,50 @@ async def api_photo(request):
 VALID_RESULTS = {"ok", "issue", "skipped"}
 
 
+def _clean_photos(raw) -> list[dict]:
+    photos = []
+    if isinstance(raw, list):
+        for p in raw[:6]:
+            if isinstance(p, dict) and str(p.get("ref", "")).strip():
+                photos.append({"label": str(p.get("label", ""))[:20],
+                               "ref": str(p["ref"])[:300]})
+    return photos
+
+
+def _validate_result(r: dict) -> tuple[str | None, list[dict], str]:
+    """Enforce the M&E evidence rules. Returns (value_str, photos, error)."""
+    task = checklists.task_of(r["category"], r["task_id"])
+    photos = _clean_photos(r.get("photos"))
+    labels = {p["label"] for p in photos}
+
+    if r["result"] == "skipped":
+        return None, [], ""
+
+    if r["result"] == "ok":
+        values = r.get("values") or {}
+        for f in task.get("fields", []):
+            v = str(values.get(f["label"], "")).strip()
+            if not v:
+                return None, [], f"missing reading '{f['label']}'"
+            if f["type"] == "number":
+                try:
+                    float(v.replace(",", "."))
+                except ValueError:
+                    return None, [], f"'{f['label']}' must be a number"
+        missing = [pl for pl in checklists.PHOTO_LABELS if pl not in labels]
+        if missing:
+            return None, [], f"missing photo(s): {', '.join(missing)}"
+        return checklists.format_values(task, values) or None, photos, ""
+
+    # issue: description + at least one evidence photo
+    if not str(r.get("note") or "").strip():
+        return None, [], "issue needs a description"
+    if not photos:
+        return None, [], "issue needs at least one photo"
+    values = r.get("values") or {}
+    return checklists.format_values(task, values) or None, photos, ""
+
+
 async def api_submit(request):
     worker = _worker(request)
     conn = request.app["conn"]
@@ -176,11 +223,17 @@ async def api_submit(request):
     if not results:
         raise web.HTTPBadRequest(text="No results")
     seen = set()
+    validated = {}
     for r in results:
         key = (r.get("category"), r.get("task_id"))
         if key not in due or key in seen or r.get("result") not in VALID_RESULTS:
             raise web.HTTPBadRequest(text=f"Invalid item {key}")
         seen.add(key)
+        value_str, photos, err = _validate_result(r)
+        if err:
+            task = checklists.task_of(r["category"], r["task_id"])
+            raise web.HTTPBadRequest(text=f"{task['desc']}: {err}")
+        validated[key] = (value_str, photos)
     if seen != due:
         raise web.HTTPBadRequest(text="Incomplete: answer every due task")
 
@@ -193,11 +246,12 @@ async def api_submit(request):
         conn, code, worker["telegram_id"],
         [(c, t, freq_of[(c, t)]) for (c, t) in due])
     for r in results:
+        value_str, photos = validated[(r["category"], r["task_id"])]
         db.set_item_result(
             conn, insp_id, r["category"], r["task_id"], r["result"],
             note=(str(r.get("note") or "").strip()[:1000] or None),
-            photo_file_id=(r.get("photo") or None),
-            value=(str(r.get("value") or "").strip()[:200] or None))
+            value=value_str,
+            photos=json.dumps(photos) if photos else None)
     db.set_inspection_status(conn, insp_id, "submitted")
 
     items = db.get_items(conn, insp_id)

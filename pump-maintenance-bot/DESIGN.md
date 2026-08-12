@@ -54,18 +54,27 @@ boxes per pump house would kill adoption. So the app is built around
    **✅ All OK** button that answers every remaining task in the card with
    one tap. Individual tasks have a three-way control: **OK / Issue / N/A**.
 4. **Recording sheet** — tapping **OK** or **Issue** slides up a bottom
-   sheet prompting for a **reading/value** (e.g. `5.2 A`, `415 V`, `2.1 bar`)
-   and a **📷 photo** (opens the phone camera directly). For an Issue, a
-   description is required; for OK the fields are optional so routine ticks
-   stay fast. **N/A saves instantly — no value or photo asked.** The bulk
-   "All OK" button also skips the prompts by design.
-5. **Submit** — the bottom button stays disabled showing progress
+   sheet. Its contents are defined per task like an M&E service sheet
+   (section 5): tasks with measurable outputs show **typed reading fields
+   with the expected unit** (e.g. Current L1/L2/L3 in A, insulation
+   resistance in MΩ); pure visual checks are static-text confirmations with
+   no value fields.
+5. **Mandatory photo evidence** — every OK requires all three work-proof
+   photos: **Before, During, After** (e.g. alignment: as found, while
+   setting, as left). Every Issue requires a description plus at least the
+   **Before** (defect-found) photo; During/After are added when rectified.
+   The camera opens directly per slot. **N/A saves instantly — no value or
+   photo asked.** Both the app and the server enforce these rules; an
+   inspection cannot be submitted with missing readings or photo slots.
+6. **Submit** — the bottom button stays disabled showing progress
    (`Answer all tasks (21/52)`) until everything is answered, then becomes
    **📤 Submit inspection** with a confirmation dialog.
 
-A fully-OK inspection is **~12 taps total**. Answers save to the phone as the
-worker goes — closing Telegram or losing signal loses nothing; reopening the
-same pump house restores the half-done checklist.
+Answers save to the phone as the worker goes — closing Telegram or losing
+signal loses nothing; reopening the same pump house restores the half-done
+checklist. (The earlier bulk "All OK" shortcut was removed deliberately:
+every OK now carries its readings and B/D/A photos, which is the point of
+the evidence policy.)
 
 ### App screens
 
@@ -97,7 +106,29 @@ useful proof of completion in the field.
 ## 5. The checklist (digitized from BQ Bill U2)
 
 10 equipment categories, 52 tasks, stored in `data/checklists.json` so the
-admin can edit tasks without touching code:
+admin can edit tasks — including their expected readings and units — without
+touching code. Measured tasks carry an M&E input spec:
+
+| Task | Expected readings (units) |
+|---|---|
+| Discharge & suction pressure | Suction, Discharge (bar) |
+| Abnormal flow | Flow rate (m³/h) |
+| Abnormal vibration (pump & motor) | Vibration velocity (mm/s RMS) |
+| Pump/drive alignment (3M) | Radial, Axial misalignment (mm) |
+| Power cable test | Insulation resistance (MΩ) |
+| Motor amp | Current L1, L2, L3 (A) |
+| Supply voltage | Voltage L1-L2, L2-L3, L3-L1 (V) |
+| Bearing grease top-up | Grease added (g, 0 if none) |
+| Electrical measurement meters (3M) | Panel voltmeter (V), ammeter (A) |
+| Protection relay (Y) | Settings verified (type/setting) |
+| Earth impedance (6M) | Earth impedance (Ω) |
+| Altitude valve level (3M) | Set level (m) |
+| Flowmeter accuracy (Y) | Reference flow, meter reading (m³/h), error (%) |
+
+All remaining tasks (bolts, noise, seals, cleaning, terminations, lights…)
+are static-text checkboxes — no reading, but still full B/D/A photo proof.
+
+Category/task structure:
 
 | # | Category | Tasks | Non-monthly |
 |---|---|---|---|
