@@ -84,12 +84,37 @@ function renderRegister() {
         body: JSON.stringify({ name }),
       });
       haptic("success");
-      if (r.approved) loadHome();
+      if (r.approved) { state.workerName = name; renderMenu(); }
       else renderNote("⏳ Registration sent!<br>You'll be able to start once the admin approves you — check back soon.");
     } catch (e) {
       alert("Registration failed: " + e.message);
     }
   });
+}
+
+function renderMenu() {
+  state.cl = null;
+  const name = state.workerName ? ` · ${esc(state.workerName)}` : "";
+  $app.innerHTML = `
+    <div class="topbar">
+      <h1>BPPM<br><span class="sub">Booster pump maintenance${name}</span></h1>
+    </div>
+    <button class="menu-card" data-action="pm">
+      <span class="menu-emoji">🔧</span>
+      <span class="menu-body">
+        <b>Preventive Maintenance</b>
+        <span>Daily checklist inspections — 72 pump houses</span>
+      </span>
+      <span class="menu-arrow">›</span>
+    </button>
+    <div class="menu-card disabled">
+      <span class="menu-emoji">🚨</span>
+      <span class="menu-body">
+        <b>Emergency Work</b>
+        <span>Breakdown &amp; repair reporting</span>
+      </span>
+      <span class="chip due">Coming soon</span>
+    </div>`;
 }
 
 async function loadHome() {
@@ -98,6 +123,7 @@ async function loadHome() {
   try { data = await api("/api/houses"); }
   catch (e) { renderNote("⚠️ " + esc(e.message)); return; }
   state.homeData = data;
+  state.workerName = data.worker;
   state.cl = null;
   renderHome();
 }
@@ -123,7 +149,8 @@ function renderHome(filter = "") {
   const pct = d.total ? Math.round((100 * d.covered) / d.total) : 0;
   $app.innerHTML = `
     <div class="topbar">
-      <h1>BPPM Inspections<br><span class="sub">${esc(d.month)} · ${esc(d.worker)}</span></h1>
+      <button class="back-btn" data-action="menu">‹ Back</button>
+      <h1>Preventive Maintenance<br><span class="sub">${esc(d.month)} · ${esc(d.worker)}</span></h1>
     </div>
     <div class="card progress-wrap">
       <div class="progress-label"><span>Pump houses covered this month</span>
@@ -184,12 +211,21 @@ function renderChecklist() {
       const cur = a ? a.result : null;
       const freq = t.freq !== "M"
         ? `<span class="freq-badge">${esc(cl.freq_labels[t.freq] || t.freq)}</span>` : "";
-      const note = a && a.result === "issue"
-        ? `<div class="task-note">⚠️ ${esc(a.note || "")}${a.photo ? " 📷" : ""}</div>` : "";
+      let meta = "";
+      if (a) {
+        const bits = [];
+        if (a.value) bits.push(`📏 ${esc(a.value)}`);
+        if (a.result === "issue" && a.note) bits.push(`📝 ${esc(a.note)}`);
+        if (a.photo) bits.push("📷");
+        if (bits.length) {
+          const cls = a.result === "issue" ? "task-note" : "task-meta";
+          meta = `<div class="${cls}">${bits.join(" · ")}</div>`;
+        }
+      }
       return `
         <div class="task">
           <div class="task-desc"><span class="num">${t.id}.</span> ${esc(t.desc)}${freq}</div>
-          ${note}
+          ${meta}
           <div class="seg">
             ${segButton(cat.key, t.id, "ok", "✅ OK", "ok", cur)}
             ${segButton(cat.key, t.id, "issue", "⚠️ Issue", "issue", cur)}
@@ -237,29 +273,36 @@ function setAnswer(cat, task, answer) {
   renderChecklist();
 }
 
-/* ------------------------------------------------------------ issue sheet */
+/* ------------------------------------------------------- OK / issue sheet */
 
-function openIssueSheet(cat, taskId) {
+function openSheet(cat, taskId, kind) {
   const catDef = state.cl.categories.find((c) => c.key === cat);
   const task = catDef.tasks.find((t) => t.id === taskId);
   const existing = state.answers[`${cat}:${taskId}`] || {};
   let photoRef = existing.photo || null;
+  const isIssue = kind === "issue";
 
+  const noteField = isIssue
+    ? `<textarea id="sheet-note" placeholder="Describe the issue…"
+         maxlength="1000">${esc(existing.note || "")}</textarea>` : "";
   $sheetRoot.innerHTML = `
     <div class="sheet-backdrop" id="sheet-bd"></div>
     <div class="sheet">
-      <h3>⚠️ ${esc(task.desc)}</h3>
-      <textarea id="issue-note" placeholder="Describe the issue…"
-        maxlength="1000">${esc(existing.note || "")}</textarea>
+      <h3>${isIssue ? "⚠️" : "✅"} ${esc(task.desc)}</h3>
+      ${noteField}
+      <input class="value-field" id="sheet-value" maxlength="200"
+        placeholder="Reading / value — e.g. 5.2 A, 415 V, 2.1 bar"
+        value="${esc(existing.value || "")}">
       <div class="photo-row">
         <button class="photo-btn" id="photo-btn">📷 Add photo</button>
         <span class="photo-state ${photoRef ? "ok" : ""}" id="photo-state">
-          ${photoRef ? "Photo attached ✓" : "Optional"}</span>
+          ${photoRef ? "Photo attached ✓" : (isIssue ? "Recommended" : "Optional")}</span>
         <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
       </div>
       <div class="sheet-actions">
         <button class="big-btn secondary" id="sheet-cancel">Cancel</button>
-        <button class="big-btn" id="sheet-save">Save issue</button>
+        <button class="big-btn ${isIssue ? "" : "ok"}" id="sheet-save">
+          ${isIssue ? "Save issue" : "Save OK"}</button>
       </div>
     </div>`;
 
@@ -288,14 +331,15 @@ function openIssueSheet(cat, taskId) {
   });
 
   document.getElementById("sheet-save").addEventListener("click", () => {
-    const note = document.getElementById("issue-note").value.trim();
-    if (!note && !photoRef) {
+    const value = document.getElementById("sheet-value").value.trim();
+    const note = isIssue ? document.getElementById("sheet-note").value.trim() : "";
+    if (isIssue && !note && !photoRef) {
       alert("Please describe the issue or attach a photo.");
       return;
     }
     close();
-    haptic("warning");
-    setAnswer(cat, taskId, { result: "issue", note, photo: photoRef });
+    haptic(isIssue ? "warning" : "success");
+    setAnswer(cat, taskId, { result: kind, note, value, photo: photoRef });
   });
 }
 
@@ -306,7 +350,8 @@ async function submit() {
   const results = taskList().map((t) => {
     const a = state.answers[`${t.cat}:${t.id}`];
     return { category: t.cat, task_id: t.id, result: a.result,
-             note: a.note || null, photo: a.photo || null };
+             note: a.note || null, value: a.value || null,
+             photo: a.photo || null };
   });
   const doSubmit = async () => {
     renderNote("Submitting…");
@@ -350,6 +395,8 @@ $app.addEventListener("click", (ev) => {
   if (!btn) return;
   const a = btn.dataset;
   if (a.action === "open") { tap(); openChecklist(a.code); }
+  else if (a.action === "pm") { tap(); loadHome(); }
+  else if (a.action === "menu") { tap(); renderMenu(); }
   else if (a.action === "back") { tap(); loadHome(); }
   else if (a.action === "submit" && !btn.disabled) submit();
   else if (a.action === "allok") {
@@ -364,8 +411,9 @@ $app.addEventListener("click", (ev) => {
     renderChecklist();
   } else if (a.action === "ans") {
     tap();
-    if (a.res === "issue") openIssueSheet(a.cat, parseInt(a.task, 10));
-    else setAnswer(a.cat, parseInt(a.task, 10), { result: a.res });
+    // OK and Issue prompt for reading/photo; N/A needs nothing.
+    if (a.res === "skipped") setAnswer(a.cat, parseInt(a.task, 10), { result: "skipped" });
+    else openSheet(a.cat, parseInt(a.task, 10), a.res);
   }
 });
 
@@ -383,7 +431,10 @@ async function boot() {
     if (!me.worker) renderRegister();
     else if (!me.worker.approved) {
       renderNote("⏳ Waiting for admin approval.<br>Check back soon!");
-    } else loadHome();
+    } else {
+      state.workerName = me.worker.name;
+      renderMenu();
+    }
   } catch (e) {
     renderNote("⚠️ Could not connect: " + esc(e.message));
   }

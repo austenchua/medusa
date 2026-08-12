@@ -44,15 +44,22 @@ On a normal day almost every check passes. Making a worker tap 52 individual
 boxes per pump house would kill adoption. So the app is built around
 **exception reporting**:
 
-1. **Home screen** — all 72 pump houses with a monthly coverage bar
+1. **Home menu** — choose the work type: **🔧 Preventive Maintenance**
+   (active) or **🚨 Emergency Work** (shown greyed out, "Coming soon" —
+   reserved for the next phase).
+2. **Station list** — all 72 pump houses with a monthly coverage bar
    (`1/72`), a search box (`23` or `likas` both work), and a status chip per
    station: ✅ done this month, or "Due".
-2. **Checklist screen** — the equipment categories as cards, each with an
+3. **Checklist screen** — the equipment categories as cards, each with an
    **✅ All OK** button that answers every remaining task in the card with
    one tap. Individual tasks have a three-way control: **OK / Issue / N/A**.
-3. **Issue sheet** — tapping Issue slides up a bottom sheet: describe the
-   problem, optionally **📷 Add photo** (opens the phone camera directly).
-4. **Submit** — the bottom button stays disabled showing progress
+4. **Recording sheet** — tapping **OK** or **Issue** slides up a bottom
+   sheet prompting for a **reading/value** (e.g. `5.2 A`, `415 V`, `2.1 bar`)
+   and a **📷 photo** (opens the phone camera directly). For an Issue, a
+   description is required; for OK the fields are optional so routine ticks
+   stay fast. **N/A saves instantly — no value or photo asked.** The bulk
+   "All OK" button also skips the prompts by design.
+5. **Submit** — the bottom button stays disabled showing progress
    (`Answer all tasks (21/52)`) until everything is answered, then becomes
    **📤 Submit inspection** with a confirmation dialog.
 
@@ -111,15 +118,27 @@ with the contract.
 The 72 pump houses (BPH01 KOPUNGIT 1 … BPH72 TELIPOK) live in
 `data/pump_houses.json`.
 
-## 6. Security
+## 6. Accounts, login & security
 
-- Every API request from the Mini App carries Telegram's signed `initData`;
-  the server verifies the HMAC against the bot token
-  (`bot/webapp_auth.py`), so a worker's identity cannot be spoofed and the
-  API cannot be used from outside Telegram.
-- Workers must be approved by an admin before any endpoint accepts their data.
-- Submissions are validated server-side against the currently-due task set —
-  a stale or tampered client can't write arbitrary rows.
+Every worker has their own account, and strangers cannot reach the data:
+
+- **Login is Telegram itself.** There are no passwords: every API request
+  carries Telegram's signed `initData`, and the server verifies the HMAC
+  against the bot token (`bot/webapp_auth.py`). Identity cannot be spoofed,
+  requests expire after 24 h, and the API is unusable from outside Telegram —
+  anyone hitting the URL directly gets `401 Unauthorized`.
+- **Admin approval gate.** A new worker registers with their name and is
+  held in "pending" until an admin taps **Approve** in Telegram. Until then
+  every endpoint (stations, checklist, photo upload, submit) returns
+  `403 Forbidden` — a stranger who somehow opens the app can't upload
+  anything.
+- **Per-worker audit trail.** Every inspection and photo is tied to the
+  approved worker's Telegram ID and name, so reports show who did what.
+- **Server-side validation.** Submissions are checked against the
+  currently-due task set — a stale or tampered client can't write arbitrary
+  rows. Photo uploads are size-capped and require an approved account.
+- Rejecting or un-approving a worker (admin **Reject**) immediately cuts
+  their access.
 
 ## 7. Data model
 

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS inspection_items (
     task_id       INTEGER NOT NULL,
     freq          TEXT NOT NULL,
     result        TEXT,          -- ok | issue | skipped (NULL = not answered yet)
+    value         TEXT,          -- measured reading, e.g. "5.2 A" / "415 V"
     note          TEXT,
     photo_file_id TEXT,
     PRIMARY KEY (inspection_id, category, task_id)
@@ -65,6 +66,10 @@ def init_db() -> None:
     conn = connect()
     with conn:
         conn.executescript(SCHEMA)
+        # Migration for databases created before the value column existed.
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(inspection_items)")}
+        if "value" not in cols:
+            conn.execute("ALTER TABLE inspection_items ADD COLUMN value TEXT")
         houses = json.loads(
             (config.DATA_DIR / "pump_houses.json").read_text(encoding="utf-8")
         )
@@ -175,13 +180,14 @@ def get_items(conn, insp_id: int, category: str | None = None):
 
 def set_item_result(conn, insp_id: int, category: str, task_id: int,
                     result: str | None, note: str | None = None,
-                    photo_file_id: str | None = None):
+                    photo_file_id: str | None = None,
+                    value: str | None = None):
     with conn:
         conn.execute(
             """UPDATE inspection_items
-               SET result = ?, note = ?, photo_file_id = ?
+               SET result = ?, note = ?, photo_file_id = ?, value = ?
                WHERE inspection_id = ? AND category = ? AND task_id = ?""",
-            (result, note, photo_file_id, insp_id, category, task_id),
+            (result, note, photo_file_id, value, insp_id, category, task_id),
         )
 
 

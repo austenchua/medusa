@@ -71,8 +71,12 @@ def issue_alert_texts(conn, insp, items) -> tuple[str, list[tuple[str, str]]]:
     for i in issues:
         task = checklists.task_of(i["category"], i["task_id"])
         cat = checklists.CATEGORY_BY_KEY[i["category"]]
-        note = f"\n  📝 {esc(i['note'])}" if i["note"] else ""
-        body.append(f"• {esc(cat['name'])}: {esc(task['desc'])}{note}")
+        detail = ""
+        if i["value"]:
+            detail += f"\n  📏 {esc(i['value'])}"
+        if i["note"]:
+            detail += f"\n  📝 {esc(i['note'])}"
+        body.append(f"• {esc(cat['name'])}: {esc(task['desc'])}{detail}")
         if i["photo_file_id"]:
             photos.append((i["photo_file_id"],
                            f"📷 {esc(ph['code'])} — {esc(task['desc'])}"))

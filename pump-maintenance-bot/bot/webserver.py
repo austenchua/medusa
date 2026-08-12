@@ -196,7 +196,8 @@ async def api_submit(request):
         db.set_item_result(
             conn, insp_id, r["category"], r["task_id"], r["result"],
             note=(str(r.get("note") or "").strip()[:1000] or None),
-            photo_file_id=(r.get("photo") or None))
+            photo_file_id=(r.get("photo") or None),
+            value=(str(r.get("value") or "").strip()[:200] or None))
     db.set_inspection_status(conn, insp_id, "submitted")
 
     items = db.get_items(conn, insp_id)
