@@ -1,9 +1,10 @@
-# BPPM Bot — Booster Pump Maintenance Telegram Bot
+# BPPM — Booster Pump Maintenance Telegram Mini App
 
-Telegram bot for daily preventive-maintenance data collection across 72 booster
-pump houses. Workers tick a smart checklist on their phone; issues (with photos)
-are pushed to admins instantly; the monthly Excel work report is generated
-automatically. See [DESIGN.md](DESIGN.md) for the full design.
+Telegram Mini App (+ bot) for daily preventive-maintenance data collection
+across 72 booster pump houses. Workers open a real app UI inside Telegram —
+searchable pump house list, tappable checklist, camera photos for defects.
+Issues are pushed to admins instantly; the monthly Excel work report is
+generated automatically. See [DESIGN.md](DESIGN.md) for the full design.
 
 ## Quick start
 
@@ -21,12 +22,33 @@ pip install -r requirements.txt
 export BOT_TOKEN="123456:ABC..."     # from BotFather
 export ADMIN_IDS="11111111"          # your Telegram ID(s), comma-separated
 
+# Mini App UI (recommended): public HTTPS URL that reaches this machine's
+# port 8080 — see "Exposing the Mini App" below. Omit to run chat-only.
+export WEBAPP_URL="https://your-domain.example"
+
 python -m bot.main
 ```
 
-4. Open your bot in Telegram, send `/start`. Admins listed in `ADMIN_IDS` are
-   registered automatically; workers send `/start`, type their name, and wait
-   for your **Approve** tap.
+4. Open your bot in Telegram, send `/start`, and tap **📱 Open BPPM App**
+   (also available from the bot's menu button). Admins listed in `ADMIN_IDS`
+   are registered automatically; workers register with their name in the app
+   and wait for your **Approve** tap.
+
+## Exposing the Mini App
+
+Telegram requires Mini Apps to be served over **HTTPS**. The bot has a
+built-in web server on `WEBAPP_PORT` (default 8080); put any HTTPS front in
+front of it:
+
+- **Cloudflare Tunnel** (free, no public IP):
+  `cloudflared tunnel --url http://localhost:8080` — use the printed
+  `https://…trycloudflare.com` URL as `WEBAPP_URL` for testing, or a named
+  tunnel + your domain for production.
+- **Caddy / nginx + Let's Encrypt** on a VPS, proxying to `localhost:8080`.
+- **ngrok** for quick trials: `ngrok http 8080`.
+
+If `WEBAPP_URL` is not set, the bot still provides the full checklist flow in
+chat (inline buttons), so nothing blocks field work.
 
 ## Commands
 
@@ -43,8 +65,10 @@ python -m bot.main
 ## Configuration
 
 Environment variables (see `.env.example`): `BOT_TOKEN`, `ADMIN_IDS`,
-`DB_PATH` (default `bppm.sqlite3` in the project folder), `TIMEZONE`
-(default `Asia/Kuching`), `DAILY_DIGEST_HOUR` (default 18).
+`WEBAPP_URL`, `WEBAPP_PORT` (default 8080 when `WEBAPP_URL` is set),
+`PHOTO_DIR` (default `photos/`), `DB_PATH` (default `bppm.sqlite3` in the
+project folder), `TIMEZONE` (default `Asia/Kuching`), `DAILY_DIGEST_HOUR`
+(default 18).
 
 ## Editing the checklist / pump houses
 
@@ -73,4 +97,4 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-Back up by copying the SQLite file (`bppm.sqlite3`).
+Back up by copying the SQLite file (`bppm.sqlite3`) and the `photos/` folder.

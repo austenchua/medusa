@@ -1,19 +1,32 @@
-# BPPM Bot — Pump Maintenance Telegram App
+# BPPM — Pump Maintenance Telegram Mini App
 
-A Telegram bot for daily **Booster Pump Preventive Maintenance (BPPM)** data
-collection across **72 pump houses**, replacing paper checklists. Workers record
-inspections from their phone in a few taps; the system stores everything in a
-database and generates the monthly work report automatically, so the admin never
-compiles it by hand.
+A Telegram **Mini App** for daily **Booster Pump Preventive Maintenance
+(BPPM)** data collection across **72 pump houses**, replacing paper checklists.
+Workers open a real app UI inside Telegram — pump house list with search,
+tappable checklist, camera photos for defects — and submit in a few taps. The
+system stores everything in a database and generates the monthly work report
+automatically, so the admin never compiles it by hand.
+
+Two surfaces share one brain:
+
+- **The Mini App** (`webapp/`) — the worker's UI, opened from the bot's
+  "Open App" menu button. Telegram requires an HTTPS URL for this; the bot
+  ships with a built-in web server you put behind any HTTPS proxy.
+- **The bot chat** — registration/approval, instant issue alerts to admins,
+  the daily digest, `/report` Excel export, and a full chat-based checklist
+  flow as a fallback when the app URL isn't configured.
 
 ---
 
-## 1. Why a Telegram bot (not a custom app)
+## 1. Why a Telegram Mini App (not a standalone app)
 
 - Workers already have Telegram — nothing to install, no app store, no logins.
-- Works on any phone, on weak mobile data (messages are tiny).
-- Photos of defects are first-class: snap → send, done.
-- The bot runs on one small server; the database is yours.
+  Identity comes from Telegram itself (cryptographically signed `initData`),
+  so there are no passwords to manage or forget.
+- Mini Apps give a real UI (lists, search, progress bars, bottom sheets)
+  while still living inside Telegram, matching the user's theme.
+- Photos of defects are first-class: tap → camera → attached.
+- Everything runs on one small server; the database is yours.
 
 ## 2. The people
 
@@ -28,71 +41,33 @@ can submit anything, so random people can't inject data.
 ## 3. The key UX idea: "All OK" first, exceptions second
 
 On a normal day almost every check passes. Making a worker tap 52 individual
-boxes per pump house would kill adoption. So the flow is built around
+boxes per pump house would kill adoption. So the app is built around
 **exception reporting**:
 
-1. Pick the pump house (tap from list, or type `23` / `likas` to search).
-2. The bot shows the 10 equipment categories with live progress counters.
-3. Open a category → tap **✅ All remaining OK** → done in one tap.
-4. Only when something is wrong: tap that task → **⚠️ Issue** → type what's
-   wrong (optionally send a photo with the text as caption).
-5. When all categories show ✅ → **Review & Submit**.
+1. **Home screen** — all 72 pump houses with a monthly coverage bar
+   (`1/72`), a search box (`23` or `likas` both work), and a status chip per
+   station: ✅ done this month, or "Due".
+2. **Checklist screen** — the equipment categories as cards, each with an
+   **✅ All OK** button that answers every remaining task in the card with
+   one tap. Individual tasks have a three-way control: **OK / Issue / N/A**.
+3. **Issue sheet** — tapping Issue slides up a bottom sheet: describe the
+   problem, optionally **📷 Add photo** (opens the phone camera directly).
+4. **Submit** — the bottom button stays disabled showing progress
+   (`Answer all tasks (21/52)`) until everything is answered, then becomes
+   **📤 Submit inspection** with a confirmation dialog.
 
-A fully-OK inspection is **~12 taps total**. An unfinished inspection is saved
-as a draft — the worker can close Telegram, drive to the next site, and `/new`
-offers to resume.
+A fully-OK inspection is **~12 taps total**. Answers save to the phone as the
+worker goes — closing Telegram or losing signal loses nothing; reopening the
+same pump house restores the half-done checklist.
 
-### Conversation mockup
+### App screens
 
-```
-Worker: /new
-Bot:    🏠 Which pump house?
-        Tap below, or type its number/name to search.
-        [BPH01 · KOPUNGIT 1]
-        [BPH02 · KOPUNGIT 2]
-        ... [⬅️ Prev] [1/9] [Next ➡️]
+| Home | Checklist | Issue sheet | Submitted |
+|---|---|---|---|
+| 72 stations, coverage bar, search, status chips | Category cards, All OK button, OK/Issue/N/A per task, progress bar | Note + camera photo, slides over the list | Counts recap, straight to the next station |
 
-Worker: 23
-Bot:    🔧 BPH23 · SIGNAL HILL LIKAS
-        Progress: 0/44 tasks
-        📅 Includes due periodic checks: Three Monthly
-        [⚙️ Booster Pump · 0/11]
-        [🔌 Booster Pump Motor · 0/10]
-        [🚰 Pump Station's Pipework · 0/3]
-        ...
-        [📋 Review & Submit] [🗑 Cancel]
-
-Worker: (taps ⚙️ Booster Pump)
-Bot:    ⚙️ Booster Pump
-        [⬜ 1. Check any abnormal of discharge & suction…]
-        [⬜ 2. Check any abnormal flow]
-        ...
-        [✅ All remaining OK]
-        [⬅️ Back to categories]
-
-Worker: (taps task 6, then ⚠️ Issue)
-Bot:    ⚠️ Check leakage of mechanical seal
-        Describe the issue in one message. To include a
-        photo, send the photo with your description as
-        its caption.
-
-Worker: 📷 (photo) "Seal weeping at pump 2, ~1 drip/sec"
-Bot:    ⚠️ Issue recorded.   → back to overview
-
-Worker: (…All OK on the rest, then Review & Submit)
-Bot:    📋 Summary — BPH23 · SIGNAL HILL LIKAS
-        ✅ OK: 43   ⚠️ Issues: 1   ⏭ Skipped: 0
-        Issues found:
-        • Booster Pump: Check leakage of mechanical seal — Seal weeping…
-        [📤 Submit inspection]
-
-Bot →   (to every admin, instantly)
-        ⚠️ Issues at BPH23 · SIGNAL HILL LIKAS
-        Reported by Ali, 2026-08-12 10:41
-        • Booster Pump: Check leakage of mechanical seal
-          📝 Seal weeping at pump 2, ~1 drip/sec
-        📷 (photo follows)
-```
+(Screenshots of every screen are in the published design page; the flow was
+verified end-to-end in a real browser during development.)
 
 ## 4. Smart scheduling — the bot knows what's due
 
@@ -136,7 +111,17 @@ with the contract.
 The 72 pump houses (BPH01 KOPUNGIT 1 … BPH72 TELIPOK) live in
 `data/pump_houses.json`.
 
-## 6. Data model
+## 6. Security
+
+- Every API request from the Mini App carries Telegram's signed `initData`;
+  the server verifies the HMAC against the bot token
+  (`bot/webapp_auth.py`), so a worker's identity cannot be spoofed and the
+  API cannot be used from outside Telegram.
+- Workers must be approved by an admin before any endpoint accepts their data.
+- Submissions are validated server-side against the currently-due task set —
+  a stale or tampered client can't write arbitrary rows.
+
+## 7. Data model
 
 SQLite by default (zero setup, one file, trivially backed up); the schema is
 plain SQL and ports to PostgreSQL unchanged if you outgrow it.
@@ -151,12 +136,13 @@ inspection_items   inspection_id FK, category, task_id, freq,
 ```
 
 - Every answer is a row — full audit trail of who checked what, when.
-- Photos are stored as Telegram `file_id`s (no disk space needed; retrievable
-  via the Bot API at report time).
-- Drafts live in the same table, so unfinished inspections survive bot
-  restarts and phone reboots.
+- Photos: Mini App uploads are saved under `photos/` and referenced as
+  `local:<file>`; photos sent in the chat flow are stored as Telegram
+  `file_id`s. Both kinds are pushed to admins in issue alerts.
+- App drafts persist on the worker's phone; chat-flow drafts persist in the
+  database — either way an unfinished inspection survives interruptions.
 
-## 7. Reporting — the admin does nothing
+## 8. Reporting — the admin does nothing
 
 **Instant:** every submitted issue is pushed to all admins immediately, with
 notes and photos.
@@ -174,23 +160,30 @@ month (x/72), issues so far, and the list of stations not yet visited.
 
 `/status` shows the same coverage numbers on demand, any time.
 
-## 8. Architecture
+## 9. Architecture
 
 ```mermaid
 flowchart LR
-    W[👷 Worker phones\nTelegram] -->|checklist taps,\nissue photos| B[🤖 BPPM Bot\npython-telegram-bot]
+    W[👷 Worker phones\nTelegram Mini App UI] -->|HTTPS + signed initData| S[🌐 Built-in web server\naiohttp]
+    S --- B[🤖 BPPM Bot\npython-telegram-bot]
     B --> D[(SQLite / PostgreSQL)]
-    B -->|instant issue alerts\ndaily digest| A[👔 Admin phones]
+    S --> D
+    B -->|instant issue alerts\ndaily digest| A[👔 Admin phones\nTelegram chat]
     A -->|/report| B
     B -->|Excel workbook| A
 ```
 
-- **Python 3.11+**, `python-telegram-bot` v21 (async), `openpyxl` for Excel.
-- Long polling — no public IP, domain, or TLS certificate needed; runs on any
-  RM20/month VPS or an office PC.
-- Single process, one SQLite file; back up = copy one file.
+- **One process**: Python 3.11+, `python-telegram-bot` v21 (async) for the
+  bot + `aiohttp` serving the Mini App UI and JSON API, `openpyxl` for Excel.
+- The frontend is dependency-free vanilla HTML/JS/CSS (`webapp/`) using
+  Telegram's theme variables — it matches each worker's light/dark theme
+  automatically. No build step.
+- The bot side uses long polling; only the Mini App needs an HTTPS URL —
+  point a reverse proxy, Cloudflare Tunnel, or ngrok at the local port.
+  Without `WEBAPP_URL` set, everything still works chat-only.
+- Single process, one SQLite file; back up = copy one file (plus `photos/`).
 
-## 9. Future extensions (not built yet, schema-ready)
+## 10. Future extensions (not built yet, schema-ready)
 
 - **Numeric readings** — motor amps, supply voltage, pressures as typed values
   with out-of-range alerts (the `note` field already captures them free-text).

@@ -52,6 +52,8 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(config.DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # WAL lets the bot and the Mini App web server share the file safely.
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 

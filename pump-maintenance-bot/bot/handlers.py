@@ -25,21 +25,58 @@ def _conn(context: ContextTypes.DEFAULT_TYPE):
     return conn
 
 
-async def _notify_admins(context, text, photo_file_id=None, reply_markup=None):
-    conn = _conn(context)
+async def notify_admins(bot, conn, text, photo_file_id=None, reply_markup=None):
+    """Send a message (optionally with photo) to every admin.
+
+    photo_file_id is either a Telegram file_id or "local:<filename>" for
+    photos uploaded through the Mini App.
+    """
     admin_ids = {r["telegram_id"] for r in db.list_admins(conn)} | config.ADMIN_IDS
     for admin_id in admin_ids:
         try:
-            if photo_file_id:
-                await context.bot.send_photo(
+            if photo_file_id and photo_file_id.startswith("local:"):
+                path = config.PHOTO_DIR / photo_file_id[len("local:"):]
+                with open(path, "rb") as f:
+                    await bot.send_photo(
+                        admin_id, f, caption=text,
+                        parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+            elif photo_file_id:
+                await bot.send_photo(
                     admin_id, photo_file_id, caption=text,
                     parse_mode=ParseMode.HTML, reply_markup=reply_markup)
             else:
-                await context.bot.send_message(
+                await bot.send_message(
                     admin_id, text, parse_mode=ParseMode.HTML,
                     reply_markup=reply_markup)
         except Exception:
             log.warning("Could not notify admin %s", admin_id, exc_info=True)
+
+
+async def _notify_admins(context, text, photo_file_id=None, reply_markup=None):
+    await notify_admins(context.bot, _conn(context), text,
+                        photo_file_id=photo_file_id, reply_markup=reply_markup)
+
+
+def issue_alert_texts(conn, insp, items) -> tuple[str, list[tuple[str, str]]]:
+    """Build the admin alert for a submitted inspection with issues.
+
+    Returns (summary_html, [(photo_ref, caption_html), ...]).
+    """
+    ph = db.get_pump_house(conn, insp["pump_house"])
+    worker = db.get_worker(conn, insp["worker_id"])
+    issues = [i for i in items if i["result"] == "issue"]
+    header = (f"⚠️ <b>Issues at {esc(ph['code'])} · {esc(ph['name'])}</b>\n"
+              f"Reported by {esc(worker['name'])}, {esc(db.now_iso()[:16])}\n")
+    body, photos = [], []
+    for i in issues:
+        task = checklists.task_of(i["category"], i["task_id"])
+        cat = checklists.CATEGORY_BY_KEY[i["category"]]
+        note = f"\n  📝 {esc(i['note'])}" if i["note"] else ""
+        body.append(f"• {esc(cat['name'])}: {esc(task['desc'])}{note}")
+        if i["photo_file_id"]:
+            photos.append((i["photo_file_id"],
+                           f"📷 {esc(ph['code'])} — {esc(task['desc'])}"))
+    return header + "\n".join(body), photos
 
 
 # ------------------------------------------------------------------ /start
@@ -86,7 +123,17 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = WELCOME_WORKER.format(name=esc(worker["name"]))
     if worker["is_admin"]:
         text += WELCOME_ADMIN
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+    markup = None
+    if config.WEBAPP_URL:
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+        text += ("\n\n📱 Tip: the <b>app</b> is the fastest way to record "
+                 "inspections — tap below or use the menu button.")
+        markup = InlineKeyboardMarkup([[
+            InlineKeyboardButton("📱 Open BPPM App",
+                                 web_app=WebAppInfo(config.WEBAPP_URL))
+        ]])
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML,
+                                    reply_markup=markup)
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -251,7 +298,6 @@ async def _submit(query, context, insp_id: int):
     conn = _conn(context)
     insp = db.get_inspection(conn, insp_id)
     ph = db.get_pump_house(conn, insp["pump_house"])
-    worker = db.get_worker(conn, insp["worker_id"])
     db.set_inspection_status(conn, insp_id, "submitted")
 
     items = db.get_items(conn, insp_id)
@@ -264,22 +310,10 @@ async def _submit(query, context, insp_id: int):
 
     # Alert admins about issues immediately.
     if issues:
-        header = (f"⚠️ <b>Issues at {esc(ph['code'])} · {esc(ph['name'])}</b>\n"
-                  f"Reported by {esc(worker['name'])}, {esc(db.now_iso()[:16])}\n")
-        body = []
-        for i in issues:
-            task = checklists.task_of(i["category"], i["task_id"])
-            cat = checklists.CATEGORY_BY_KEY[i["category"]]
-            note = f"\n  📝 {esc(i['note'])}" if i["note"] else ""
-            body.append(f"• {esc(cat['name'])}: {esc(task['desc'])}{note}")
-        await _notify_admins(context, header + "\n".join(body))
-        for i in issues:
-            if i["photo_file_id"]:
-                task = checklists.task_of(i["category"], i["task_id"])
-                await _notify_admins(
-                    context,
-                    f"📷 {esc(ph['code'])} — {esc(task['desc'])}",
-                    photo_file_id=i["photo_file_id"])
+        summary, photos = issue_alert_texts(conn, insp, items)
+        await _notify_admins(context, summary)
+        for photo_ref, caption in photos:
+            await _notify_admins(context, caption, photo_file_id=photo_ref)
 
 
 # ------------------------------------------------------------ callbacks
