@@ -1,0 +1,170 @@
+{
+  "source": "BQ Bill U2 - Monthly Booster Pump Preventive Maintenance (BPPM) and Servicing",
+  "frequencies": {
+    "M": "Monthly",
+    "3M": "Three Monthly",
+    "6M": "Six Monthly",
+    "Y": "Yearly"
+  },
+  "photo_labels": ["Before", "During", "After"],
+  "categories": [
+    {
+      "key": "booster_pump",
+      "name": "Booster Pump",
+      "emoji": "⚙️",
+      "tasks": [
+        { "id": 1, "desc": "Check any abnormal of discharge & suction pressure", "freq": "M",
+          "fields": [
+            { "label": "Suction pressure", "unit": "bar", "type": "number" },
+            { "label": "Discharge pressure", "unit": "bar", "type": "number" }
+          ] },
+        { "id": 2, "desc": "Check any abnormal flow", "freq": "M",
+          "fields": [ { "label": "Flow rate", "unit": "m³/h", "type": "number" } ] },
+        { "id": 3, "desc": "Check any abnormal vibration", "freq": "M",
+          "fields": [ { "label": "Vibration velocity", "unit": "mm/s RMS", "type": "number" } ] },
+        { "id": 4, "desc": "Check all mounting bolts are tight", "freq": "M", "fields": [] },
+        { "id": 5, "desc": "Check any unusual noise", "freq": "M", "fields": [] },
+        { "id": 6, "desc": "Check leakage of mechanical seal", "freq": "M", "fields": [] },
+        { "id": 7, "desc": "Check shaft coupling component (bushes/rubber spider)", "freq": "M", "fields": [] },
+        { "id": 8, "desc": "Check all mounting bolts are tight", "freq": "M", "fields": [] },
+        { "id": 9, "desc": "Clean surface of pumpset and other accessories", "freq": "M", "fields": [] },
+        { "id": 10, "desc": "Top up bearing grease if required", "freq": "M",
+          "fields": [ { "label": "Grease added", "unit": "g (0 if none)", "type": "number" } ] },
+        { "id": 11, "desc": "Check alignment of the pump and the drive", "freq": "3M",
+          "fields": [
+            { "label": "Radial misalignment", "unit": "mm", "type": "number" },
+            { "label": "Axial misalignment", "unit": "mm", "type": "number" }
+          ] }
+      ]
+    },
+    {
+      "key": "pump_motor",
+      "name": "Booster Pump Motor",
+      "emoji": "🔌",
+      "tasks": [
+        { "id": 1, "desc": "Power cable test", "freq": "M",
+          "fields": [ { "label": "Insulation resistance", "unit": "MΩ", "type": "number" } ] },
+        { "id": 2, "desc": "Check any abnormal vibration", "freq": "M",
+          "fields": [ { "label": "Vibration velocity", "unit": "mm/s RMS", "type": "number" } ] },
+        { "id": 3, "desc": "Check any unusual noise", "freq": "M", "fields": [] },
+        { "id": 4, "desc": "Check motor amp", "freq": "M",
+          "fields": [
+            { "label": "Current L1", "unit": "A", "type": "number" },
+            { "label": "Current L2", "unit": "A", "type": "number" },
+            { "label": "Current L3", "unit": "A", "type": "number" }
+          ] },
+        { "id": 5, "desc": "Check supply voltage", "freq": "M",
+          "fields": [
+            { "label": "Voltage L1-L2", "unit": "V", "type": "number" },
+            { "label": "Voltage L2-L3", "unit": "V", "type": "number" },
+            { "label": "Voltage L3-L1", "unit": "V", "type": "number" }
+          ] },
+        { "id": 6, "desc": "Check all mounting bolts are tight", "freq": "M", "fields": [] },
+        { "id": 7, "desc": "Clean surface of motor and other accessories", "freq": "M", "fields": [] },
+        { "id": 8, "desc": "Clean cooling air inlet opening", "freq": "M", "fields": [] },
+        { "id": 9, "desc": "Inspect cable terminals are cleaned and tight", "freq": "M", "fields": [] },
+        { "id": 10, "desc": "Top up bearing grease if required", "freq": "M",
+          "fields": [ { "label": "Grease added", "unit": "g (0 if none)", "type": "number" } ] }
+      ]
+    },
+    {
+      "key": "pipework",
+      "name": "Pump Station's Pipework",
+      "emoji": "🚰",
+      "tasks": [
+        { "id": 1, "desc": "Check surface corrosion by visually inspect on the pipeline and valves", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Check leakage at all joints, connection and seal areas", "freq": "M", "fields": [] },
+        { "id": 3, "desc": "Clean surface of pipe", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "butterfly_valve",
+      "name": "Butterfly Valve / Sluice Valve",
+      "emoji": "🦋",
+      "tasks": [
+        { "id": 1, "desc": "Check valve opening and closing action", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Check leakage at flange joint", "freq": "M", "fields": [] },
+        { "id": 3, "desc": "Clean surface of valve", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "altitude_valve",
+      "name": "Altitude Valve (Suction Tank & Reservoir)",
+      "emoji": "🗼",
+      "tasks": [
+        { "id": 1, "desc": "Check altitude valve diaphragm", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Check pilot control valve", "freq": "M", "fields": [] },
+        { "id": 3, "desc": "Check leakage at flange joint", "freq": "M", "fields": [] },
+        { "id": 4, "desc": "Clean surface of valve", "freq": "M", "fields": [] },
+        { "id": 5, "desc": "Check required level including setting and calibration", "freq": "3M",
+          "fields": [ { "label": "Set level", "unit": "m", "type": "number" } ] }
+      ]
+    },
+    {
+      "key": "surge_valve",
+      "name": "Surge Anticipating Valve",
+      "emoji": "🌊",
+      "tasks": [
+        { "id": 1, "desc": "Check leakage at flange joint", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Clean surface of valve", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "non_return_valve",
+      "name": "Non-Return Valve",
+      "emoji": "🔄",
+      "tasks": [
+        { "id": 1, "desc": "Check leakage at flange joint", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Clean surface of valve", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "strainer",
+      "name": "Strainer",
+      "emoji": "🧺",
+      "tasks": [
+        { "id": 1, "desc": "Check, service and cleaning", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Clean surface of valve", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "switchboard",
+      "name": "Electrical Switchboard (Incl. VFD)",
+      "emoji": "⚡",
+      "tasks": [
+        { "id": 1, "desc": "Check panel components (metering chamber, protection system, power factor correction, capacitor bank, etc.)", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Check electrical measurement meters", "freq": "3M",
+          "fields": [
+            { "label": "Panel voltmeter reading", "unit": "V", "type": "number" },
+            { "label": "Panel ammeter reading", "unit": "A", "type": "number" }
+          ] },
+        { "id": 3, "desc": "Check indicating lights", "freq": "M", "fields": [] },
+        { "id": 4, "desc": "Check cable termination", "freq": "3M", "fields": [] },
+        { "id": 5, "desc": "Vacuum clean this panel", "freq": "M", "fields": [] },
+        { "id": 6, "desc": "Check protection relay and setting", "freq": "Y",
+          "fields": [ { "label": "Relay settings verified", "unit": "type / setting", "type": "text" } ] },
+        { "id": 7, "desc": "Check earth impedance of panel", "freq": "6M",
+          "fields": [ { "label": "Earth impedance", "unit": "Ω", "type": "number" } ] },
+        { "id": 8, "desc": "Check control sequence", "freq": "6M", "fields": [] },
+        { "id": 9, "desc": "Check compound lighting & internal lighting", "freq": "M", "fields": [] },
+        { "id": 10, "desc": "Check and vacuum clean VFD", "freq": "M", "fields": [] }
+      ]
+    },
+    {
+      "key": "flowmeter",
+      "name": "Electromagnetic Flowmeter",
+      "emoji": "📊",
+      "tasks": [
+        { "id": 1, "desc": "Check leakage at connection joint", "freq": "M", "fields": [] },
+        { "id": 2, "desc": "Check cable termination", "freq": "M", "fields": [] },
+        { "id": 3, "desc": "Check LPU", "freq": "M", "fields": [] },
+        { "id": 4, "desc": "Accuracy verification on the flowmeter", "freq": "Y",
+          "fields": [
+            { "label": "Reference flow", "unit": "m³/h", "type": "number" },
+            { "label": "Meter reading", "unit": "m³/h", "type": "number" },
+            { "label": "Error", "unit": "%", "type": "number" }
+          ] }
+      ]
+    }
+  ]
+}

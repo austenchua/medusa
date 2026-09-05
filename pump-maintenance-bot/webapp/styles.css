@@ -1,0 +1,250 @@
+/* BPPM Mini App — uses Telegram theme variables so it matches the user's
+   Telegram theme (light or dark) automatically. */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --bg2: var(--tg-theme-secondary-bg-color, #f0f2f5);
+  --text: var(--tg-theme-text-color, #111827);
+  --hint: var(--tg-theme-hint-color, #6b7280);
+  --accent: var(--tg-theme-button-color, #2AABEE);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --ok: #2E9E6B;
+  --ok-bg: rgba(46, 158, 107, 0.14);
+  --issue: #E2543A;
+  --issue-bg: rgba(226, 84, 58, 0.13);
+  --na: var(--hint);
+  --line: rgba(128, 128, 128, 0.22);
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg2);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+#app { max-width: 560px; margin: 0 auto; padding: 12px 12px 0; }
+button { font: inherit; border: none; cursor: pointer; }
+input, textarea { font: inherit; color: var(--text); }
+
+.center-note { text-align: center; color: var(--hint); padding: 48px 24px; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+/* ---------- header / cards ---------- */
+.topbar { display: flex; align-items: center; gap: 10px; padding: 6px 2px 12px; }
+.topbar h1 { font-size: 20px; font-weight: 700; margin: 0; flex: 1; }
+.topbar .sub { font-size: 13px; color: var(--hint); }
+.back-btn {
+  background: var(--bg); color: var(--accent);
+  border-radius: 10px; padding: 8px 12px; font-weight: 600; font-size: 15px;
+}
+
+.card {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.progress-wrap { margin: 4px 0 12px; }
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 13px; color: var(--hint); margin-bottom: 5px;
+}
+.progress-label b { color: var(--text); font-variant-numeric: tabular-nums; }
+.progress-track {
+  height: 8px; border-radius: 5px; background: var(--line); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 5px; background: var(--accent);
+  transition: width 0.25s ease;
+}
+.progress-fill.full { background: var(--ok); }
+
+/* ---------- home menu ---------- */
+.menu-card {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; text-align: left;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.menu-card:active { opacity: 0.7; }
+.menu-card.disabled { opacity: 0.55; pointer-events: none; }
+.menu-emoji { font-size: 30px; }
+.menu-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.menu-body b { font-size: 17px; }
+.menu-body span { font-size: 13px; color: var(--hint); }
+.menu-arrow { font-size: 26px; color: var(--hint); }
+
+/* ---------- home: search + house list ---------- */
+.search {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  margin-bottom: 10px;
+  outline: none;
+}
+.search:focus { border-color: var(--accent); }
+
+.house-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.house-row:active { opacity: 0.7; }
+.house-code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700; font-size: 14px;
+  color: var(--accent);
+  min-width: 56px;
+}
+.house-name { flex: 1; font-size: 15px; }
+.chip {
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 99px; white-space: nowrap;
+}
+.chip.done { background: var(--ok-bg); color: var(--ok); }
+.chip.due  { background: var(--line); color: var(--hint); }
+
+/* ---------- checklist ---------- */
+.cat-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.cat-head h2 { font-size: 16px; font-weight: 700; margin: 0; flex: 1; }
+.cat-count { font-size: 13px; color: var(--hint); font-variant-numeric: tabular-nums; }
+.cat-done-tick { color: var(--ok); font-weight: 700; font-size: 14px; }
+
+.task {
+  padding: 11px 0 12px;
+  border-top: 1px solid var(--line);
+}
+.task:first-of-type { border-top: none; }
+.task-desc { font-size: 15px; margin-bottom: 3px; }
+.task-desc .num { color: var(--hint); }
+.freq-badge {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  color: var(--issue); background: var(--issue-bg);
+  border-radius: 6px; padding: 1px 6px; margin-left: 6px;
+  vertical-align: 1px;
+}
+.task-note {
+  font-size: 13px; color: var(--issue);
+  margin: 2px 0 8px; word-break: break-word;
+}
+.task-meta {
+  font-size: 13px; color: var(--ok);
+  margin: 2px 0 8px; word-break: break-word;
+}
+.seg { display: flex; gap: 6px; margin-top: 8px; }
+.seg button {
+  flex: 1; min-height: 42px;
+  border-radius: 10px; font-weight: 600; font-size: 14px;
+  background: var(--bg2); color: var(--hint);
+  border: 1px solid var(--line);
+}
+.seg button.sel-ok    { background: var(--ok-bg);    color: var(--ok);    border-color: var(--ok); }
+.seg button.sel-issue { background: var(--issue-bg); color: var(--issue); border-color: var(--issue); }
+.seg button.sel-na    { background: var(--line);     color: var(--text);  border-color: var(--hint); }
+
+/* ---------- fixed bottom submit ---------- */
+.bottom-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+.bottom-bar .inner { max-width: 560px; margin: 0 auto; }
+.big-btn {
+  width: 100%; min-height: 50px;
+  border-radius: 12px; font-size: 16px; font-weight: 700;
+  background: var(--accent); color: var(--accent-text);
+}
+.big-btn:disabled { opacity: 0.45; }
+.big-btn.secondary { background: var(--bg2); color: var(--text); }
+
+/* ---------- issue sheet ---------- */
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 20;
+}
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+  background: var(--bg);
+  border-radius: 18px 18px 0 0;
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  max-width: 560px; margin: 0 auto;
+}
+.sheet h3 { margin: 0 0 10px; font-size: 16px; }
+.sheet textarea {
+  width: 100%; min-height: 90px; resize: vertical;
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 12px; outline: none;
+}
+.sheet textarea:focus { border-color: var(--accent); }
+.fields { margin-top: 10px; }
+.field-label {
+  display: block; font-size: 13px; font-weight: 600;
+  margin: 10px 0 4px;
+}
+.field-label .unit { color: var(--hint); font-weight: 400; }
+.value-field {
+  width: 100%;
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 12px; padding: 11px 12px; outline: none;
+  font-size: 16px;
+}
+.value-field:focus { border-color: var(--accent); }
+.big-btn.ok { background: var(--ok); color: #fff; }
+
+.photo-req-note {
+  font-size: 12.5px; color: var(--hint); margin: 14px 0 6px;
+}
+.photo-slots { display: flex; gap: 8px; margin-bottom: 12px; }
+.photo-slot {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: var(--bg2);
+  border: 1px dashed var(--hint);
+  border-radius: 12px;
+  padding: 10px 4px;
+  color: var(--text);
+}
+.photo-slot .slot-icon { font-size: 20px; }
+.photo-slot .slot-label { font-size: 13px; font-weight: 600; }
+.photo-slot .slot-req { font-size: 11px; color: var(--hint); }
+.photo-slot.done {
+  border: 1px solid var(--ok);
+  background: var(--ok-bg);
+}
+.photo-slot.done .slot-req { color: var(--ok); }
+.sheet-actions { display: flex; gap: 8px; margin-top: 6px; }
+.sheet-actions .big-btn { flex: 1; }
+
+/* ---------- success ---------- */
+.success { text-align: center; padding: 44px 20px; }
+.success .emoji { font-size: 56px; }
+.success h2 { margin: 12px 0 6px; }
+.success .counts { color: var(--hint); margin-bottom: 26px; }
+
+.form-field {
+  width: 100%; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 12px; padding: 13px 14px; font-size: 16px;
+  margin: 10px 0 14px; outline: none;
+}
+.form-field:focus { border-color: var(--accent); }
+.error-note {
+  background: var(--issue-bg); color: var(--issue);
+  border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-bottom: 10px;
+}
